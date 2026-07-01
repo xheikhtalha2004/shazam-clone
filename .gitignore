@@ -1,0 +1,57 @@
+# ── Environment variables (NEVER commit these) ─────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ── Node / Next.js ─────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Python ─────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+dist/
+build/
+*.pyc
+
+# ── Temp / uploads ─────────────────────────────────
+/tmp/
+*.tmp
+*.temp
+
+# ── OS ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── IDE ────────────────────────────────────────────
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+
+# ── Agent / skills configuration ───────────────────
+.agents/
+skills-lock.json
+
+# ── Audio samples (don't commit large audio files) ─
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+*.aac
+sample_songs/
