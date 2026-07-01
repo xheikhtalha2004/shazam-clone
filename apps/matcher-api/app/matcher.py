@@ -18,6 +18,8 @@ while noise/false positives scatter randomly across different offsets.
 
 import logging
 from collections import defaultdict
+from io import BytesIO
+from pathlib import Path
 from typing import Optional
 
 from app.fingerprint import generate_fingerprints
@@ -34,7 +36,7 @@ MIN_VOTES: int = 5             # Minimum absolute vote count (guards against tin
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 async def match_audio(
-    audio_bytes: bytes,
+    audio_input: str | Path | bytes | BytesIO,
     min_confidence: float = MIN_CONFIDENCE,
     min_votes: int = MIN_VOTES,
 ) -> dict:
@@ -43,8 +45,9 @@ async def match_audio(
 
     Parameters
     ----------
-    audio_bytes:
-        Raw audio file bytes (WAV, WebM, MP3, etc. — ffmpeg handles decoding).
+    audio_input:
+        Audio source to fingerprint. A file path is preferred for browser uploads
+        because it preserves the container extension for ffmpeg/librosa decoding.
     min_confidence:
         Minimum ratio (aligned_votes / total_query_hashes) to declare a match.
     min_votes:
@@ -66,7 +69,7 @@ async def match_audio(
 
     # ── Step 1: Fingerprint the query clip ─────────────────────────────────────
     try:
-        query_fingerprints = generate_fingerprints(audio_bytes)
+        query_fingerprints = generate_fingerprints(audio_input)
     except ValueError as exc:
         logger.warning("Could not fingerprint query audio: %s", exc)
         return no_match_result

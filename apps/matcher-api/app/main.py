@@ -124,6 +124,17 @@ def _validate_audio_extension(filename: str) -> None:
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
+@app.get("/", tags=["System"])
+async def root():
+    """Welcome and status endpoint."""
+    return {
+        "status": "online",
+        "service": "SoundFind Matcher API",
+        "health_check": "/health",
+        "documentation": "/docs",
+    }
+
+
 @app.get("/health", tags=["System"])
 async def health_check():
     """Health check endpoint — used by Render and uptime monitors."""
@@ -267,7 +278,7 @@ async def recognize(
             tmp_path = tmp.name
 
         # Run matcher
-        result = await match_audio(audio_bytes)
+        result = await match_audio(tmp_path or audio_bytes)
 
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
