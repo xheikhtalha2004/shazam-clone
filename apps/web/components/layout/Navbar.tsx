@@ -63,6 +63,7 @@ export function Navbar() {
 
   return (
     <>
+      {/* ── Top bar ── */}
       <header
         style={{
           position: 'sticky',
@@ -108,14 +109,10 @@ export function Navbar() {
             SoundFind
           </Link>
 
-          {/* ── Desktop nav ── */}
+          {/* ── Desktop nav (hidden on mobile via CSS) ── */}
           <div
             className="nav-desktop"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-6)',
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}
           >
             <NavLink href="/">Identify</NavLink>
             <NavLink href="/dashboard">History</NavLink>
@@ -141,7 +138,7 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* ── Hamburger (mobile only) ── */}
+          {/* ── Hamburger button (visible on mobile via CSS) ── */}
           <button
             className="nav-hamburger"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -161,27 +158,23 @@ export function Navbar() {
               gap: '5px',
               borderRadius: 'var(--radius-sm)',
               padding: '6px',
-              position: 'relative',
             }}
           >
             <span style={{
               display: 'block', width: '22px', height: '2px',
-              background: 'var(--color-text)',
-              borderRadius: '2px',
+              background: 'var(--color-text)', borderRadius: '2px',
               transition: 'transform var(--duration-normal) var(--ease-out)',
               transform: menuOpen ? 'translateY(7px) rotate(45deg)' : 'none',
             }} />
             <span style={{
               display: 'block', width: '22px', height: '2px',
-              background: 'var(--color-text)',
-              borderRadius: '2px',
+              background: 'var(--color-text)', borderRadius: '2px',
               transition: 'opacity var(--duration-fast)',
               opacity: menuOpen ? 0 : 1,
             }} />
             <span style={{
               display: 'block', width: '22px', height: '2px',
-              background: 'var(--color-text)',
-              borderRadius: '2px',
+              background: 'var(--color-text)', borderRadius: '2px',
               transition: 'transform var(--duration-normal) var(--ease-out)',
               transform: menuOpen ? 'translateY(-7px) rotate(-45deg)' : 'none',
             }} />
@@ -189,10 +182,11 @@ export function Navbar() {
         </nav>
       </header>
 
-      {/* ── Mobile menu drawer ── */}
+      {/* ── Mobile full-screen drawer ── */}
       <div
         id="mobile-menu"
         aria-hidden={!menuOpen}
+        className="nav-mobile-drawer"
         style={{
           position: 'fixed',
           top: '64px',
@@ -203,23 +197,22 @@ export function Navbar() {
           background: 'rgba(10,10,26,0.98)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          display: 'flex',
+          display: 'none',
           flexDirection: 'column',
-          padding: 'var(--space-6) var(--space-5)',
+          padding: 'var(--space-8) var(--space-5)',
           gap: 'var(--space-3)',
-          transform: menuOpen ? 'translateY(0)' : 'translateY(-12px)',
+          overflowY: 'auto',
+          transform: menuOpen ? 'translateY(0)' : 'translateY(-10px)',
           opacity: menuOpen ? 1 : 0,
           pointerEvents: menuOpen ? 'auto' : 'none',
-          transition: `opacity var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out)`,
-          overflowY: 'auto',
+          transition: 'opacity var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out)',
         }}
-        className="nav-mobile-drawer"
       >
         {[
           { href: '/', label: 'Identify' },
           { href: '/dashboard', label: 'History' },
           { href: '/admin/upload', label: 'Admin' },
-        ].map(({ href, label }, i) => (
+        ].map(({ href, label }) => (
           <Link
             key={href}
             href={href}
@@ -237,7 +230,6 @@ export function Navbar() {
               background: 'var(--color-surface)',
               border: '1px solid var(--color-border-subtle)',
               transition: 'border-color var(--duration-fast), background var(--duration-fast)',
-              animationDelay: `${i * 0.05}s`,
             }}
           >
             {label}
@@ -251,7 +243,7 @@ export function Navbar() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginTop: 'var(--space-2)',
+            marginTop: 'var(--space-3)',
             padding: '18px 20px',
             borderRadius: 'var(--radius-pill)',
             fontSize: '1rem',
@@ -265,8 +257,16 @@ export function Navbar() {
         >
           Sign in
         </Link>
-        </div>
-      </nav>
-    </header>
+      </div>
+
+      {/* Responsive CSS */}
+      <style>{`
+        @media (max-width: 640px) {
+          .nav-desktop { display: none !important; }
+          .nav-hamburger { display: flex !important; }
+          .nav-mobile-drawer { display: flex !important; }
+        }
+      `}</style>
+    </>
   );
 }
