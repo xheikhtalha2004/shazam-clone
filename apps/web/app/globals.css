@@ -148,6 +148,16 @@ a:focus-visible {
   padding-inline: var(--space-6);
 }
 
+@media (max-width: 480px) {
+  .container {
+    padding-inline: var(--space-4);
+  }
+}
+
+button, a {
+  touch-action: manipulation; /* eliminates 300ms tap delay on mobile */
+}
+
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
@@ -155,6 +165,7 @@ a:focus-visible {
   overflow: hidden; clip: rect(0,0,0,0);
   white-space: nowrap; border-width: 0;
 }
+
 
 /* Animated gradient background mesh */
 .bg-mesh {

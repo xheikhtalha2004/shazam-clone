@@ -122,7 +122,8 @@ function SuccessPanel({ result, onReset }: { result: IngestResponse; onReset: ()
       </div>
       <h2 style={{ color: 'var(--color-accent)', marginBottom: 'var(--space-3)' }}>Track indexed!</h2>
 
-      <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-6)', textAlign: 'left' }}>
+      <style>{`@media(max-width:480px){.success-grid{grid-template-columns:1fr!important}}`}</style>
+      <dl className="success-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-6)', textAlign: 'left' }}>
         {[
           ['Title', result.title],
           ['Artist', result.artist],
@@ -244,7 +245,8 @@ export default function AdminUploadPage() {
             )}
 
             {/* Metadata */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <style>{`@media(max-width:480px){.meta-grid{grid-template-columns:1fr!important}}`}</style>
+            <div className="meta-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Input label="Title" id="track-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song title" required />
               <Input label="Artist" id="track-artist" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist name" required />
             </div>

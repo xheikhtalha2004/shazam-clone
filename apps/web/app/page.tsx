@@ -196,6 +196,7 @@ export default function HomePage() {
 
       <main
         id="main-content"
+        className="home-main"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -206,11 +207,19 @@ export default function HomePage() {
           gap: 'var(--space-12)',
         }}
       >
-        {/* ── Hero ──────────────────────────────────────────────────────── */}
-        <div
-          className="animate-fade-in-up"
-          style={{ textAlign: 'center', maxWidth: '560px' }}
-        >
+      <style>{`
+        @media (max-width: 640px) {
+          .home-main { padding: var(--space-8) var(--space-4) var(--space-10) !important; gap: var(--space-8) !important; }
+          .home-hero h1 { font-size: clamp(1.75rem, 8vw, 2.5rem) !important; }
+          .home-hero p { font-size: 1rem !important; }
+        }
+      `}</style>
+
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <div
+        className="animate-fade-in-up home-hero"
+        style={{ textAlign: 'center', maxWidth: '560px' }}
+      >
           <h1
             className="text-glow-green"
             style={{ marginBottom: 'var(--space-4)' }}
