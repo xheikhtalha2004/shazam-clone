@@ -102,8 +102,8 @@ CREATE TABLE profiles (
 1. **Downsampling**: Audio is resampled to $11,025\text{ Hz}$ mono to retain low/mid-frequency fidelity while keeping processing light.
 2. **Spectrogram**: Short-Time Fourier Transform (STFT) uses `n_fft=4096` and `hop_length=512`.
 3. **Log Scale**: Power values are mapped to decibels.
-4. **Asymmetric Constellation Map**: Local maxima are selected using a 2D filter (`scipy.ndimage.maximum_filter`) with an asymmetric neighborhood window size of `(50, 10)` (50 bins along the frequency axis, 10 frames along the time axis). This controls peak density by preventing redundant harmonic clusters in the frequency domain while capturing transients densely in the time domain.
-5. **Combinatorial Hash Pairing**: Each peak (anchor) is matched against up to `15` subsequent peaks (targets) inside a localized target zone ($0 \le \Delta t \le 200$ frames).
+4. **Asymmetric Constellation Map**: Local maxima are selected using a 2D filter (`scipy.ndimage.maximum_filter`) with an asymmetric neighborhood window size of `(80, 15)` (80 bins along the frequency axis, 15 frames along the time axis). This controls peak density by preventing redundant harmonic clusters in the frequency domain while capturing transients at reasonable densities.
+5. **Combinatorial Hash Pairing**: Each peak (anchor) is matched against up to `5` subsequent peaks (targets) inside a localized target zone ($0 \le \Delta t \le 200$ frames). This limits fan-out complexity and database storage consumption by ~7x while maintaining a robust constellation profile.
 6. **Hashing**: Formats: `hash = SHA-1(f_anchor | f_target | delta_t)[:10]`.
 
 ### Matching & Voting (`apps/matcher-api/app/matcher.py`)
