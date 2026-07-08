@@ -4,13 +4,27 @@
 
 ---
 
-## What It Does
+## Technical Architecture & Design Capsule
+For an in-depth blueprint of the databases, mathematical hashing logic (spectrogram constellation maps), security rules, and historic bug resolutions (like Vercel timeouts and API url limit fixes), refer to **[context_capsule.md](file:///c:/Work/Internship%20CapregSoft/Shazam%20Clone/context_capsule.md)** in the root folder.
 
-1. **Admin uploads a song** (MP3, WAV, FLAC, etc.) via the web UI
-2. **Python backend extracts fingerprints** — thousands of SHA-1 hashes derived from the audio's spectrogram
-3. **Fingerprints are stored** in Supabase Postgres (indexed for fast lookup)
-4. **A user records 5–8 seconds** of the song playing on any device
-5. **The clip is fingerprinted** and matched against the catalogue — the correct song is returned in seconds
+---
+
+## Git Repository Structure
+
+This project uses a split-repository structure to host the Next.js frontend and Python backend independently:
+
+1. **GitHub Monorepo Root (`/`)**: Hosts the Next.js Web App (`apps/web`). The backend directory is ignored (`.gitignore`). Deploy target is Vercel.
+2. **Hugging Face Space Repository (`apps/matcher-api/`)**: A nested Git repository hosting the Python FastAPI Matcher Service. Deploy target is Hugging Face Spaces (running via Docker).
+
+> [!IMPORTANT]
+> The server files in `apps/matcher-api/` are tracked in a separate Hugging Face Spaces git repository. To make server updates or deploy the API, navigate inside the subdirectory to push your changes:
+> ```bash
+> cd apps/matcher-api
+> git status
+> git add .
+> git commit -m "update server code"
+> git push origin main
+> ```
 
 ---
 
@@ -18,71 +32,31 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14 App Router · TypeScript · Tailwind CSS |
-| Auth + DB + Storage | Supabase (Postgres + Auth + Storage) |
-| Fingerprinting API | Python FastAPI · librosa · numpy · scipy |
-| Frontend deployment | Vercel |
-| Backend deployment | Render (Docker) |
-| Version control | GitHub |
+| **Frontend** | Next.js 15 App Router · TypeScript · Vanilla CSS |
+| **Auth + DB + Storage** | Supabase (Postgres + Auth + Storage) |
+| **Fingerprinting API** | Python FastAPI · librosa · numpy · scipy |
+| **Frontend Deployment** | Vercel |
+| **Backend Deployment** | Hugging Face Spaces (Docker) |
 
 ---
 
-## Architecture
+## Runtime Interaction Flows
 
 ```
-Browser (Next.js on Vercel)
-    │
-    ├── /api/admin/ingest  ──────────────────────────────────────────────────┐
-    │   (Server Route — adds API key secretly)                               │
-    │                                                                        ▼
-    ├── /recognize ──────────────────────────────────────────────► Python API (Render)
-    │                                                                        │
-    └── Supabase Auth/DB ◄────────────────────────────────────────── Supabase
-              │
-              ▼
-         ┌────────────────────────────────────────────┐
-         │             Supabase Postgres               │
-         │  tracks │ audio_fingerprints │ match_history│
-         └────────────────────────────────────────────┘
-```
-
-**Key security rule:** The `ADMIN_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are **never** sent to the browser. The Next.js `/api/admin/ingest` route acts as a secure proxy.
-
----
-
-## Project Structure
-
-```
-shazam-clone/
-├── apps/
-│   ├── web/                    # Next.js 14 frontend
-│   │   ├── app/
-│   │   │   ├── page.tsx        # Home / identify page
-│   │   │   ├── (auth)/         # Login + signup
-│   │   │   ├── dashboard/      # Match history
-│   │   │   ├── admin/upload/   # Admin song upload
-│   │   │   └── api/admin/ingest/route.ts  # Secure proxy
-│   │   ├── components/
-│   │   │   ├── audio/AudioRecorder.tsx
-│   │   │   ├── layout/Navbar.tsx
-│   │   │   └── ui/             # Button, Input, Card, Badge, Spinner, Toast
-│   │   ├── lib/supabase/       # Browser + server clients
-│   │   └── types/index.ts
-│   │
-│   └── matcher-api/            # Python FastAPI backend
-│       ├── app/
-│       │   ├── main.py         # FastAPI app + endpoints
-│       │   ├── fingerprint.py  # STFT + peak → SHA-1 hashes
-│       │   ├── matcher.py      # Offset-alignment voting
-│       │   └── supabase_client.py
-│       ├── scripts/
-│       │   └── index_local_folder.py  # Bulk indexer
-│       ├── requirements.txt
-│       └── Dockerfile
-│
-├── supabase/
-│   └── migrations/             # SQL migrations (run in order)
-└── README.md
+[Browser Client]
+       │
+       ├── (OAuth / Auth Session) ─────────────────────────► [Supabase Auth]
+       │
+       ├── (Record Sound) ────► [POST /api/admin/ingest] ───► [Next.js Route Proxy]
+       │                        (or direct client requests)         │
+       │                                                            │ (Injects ADMIN_API_KEY)
+       │                                                            ▼
+       ├──────────────────────► [POST /recognize] ──────────► [FastAPI Matcher Service]
+       │                                                            │
+       └── [Supabase Client] ◄──────────────────────────────────────┤ (Reads/Writes database
+                                                                      via service_role key)
+                                                                    ▼
+                                                            [Supabase Postgres]
 ```
 
 ---
@@ -90,262 +64,102 @@ shazam-clone/
 ## Local Setup
 
 ### Prerequisites
-
 - **Node.js** 18+ — [nodejs.org](https://nodejs.org)
 - **Python** 3.11+ — [python.org](https://python.org)
-- **ffmpeg** — required for audio decoding
-  - Windows: `winget install ffmpeg` or download from [ffmpeg.org](https://ffmpeg.org)
+- **ffmpeg** — required for audio decoding (librosa/audioread backend)
+  - Windows: `winget install ffmpeg`
   - macOS: `brew install ffmpeg`
   - Linux: `sudo apt install ffmpeg`
-- A [Supabase](https://supabase.com) project (free tier works)
+- A **Supabase** project (free tier works)
 
 ---
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/your-username/shazam-clone.git
-cd shazam-clone
-```
-
----
-
-### 2. Supabase Setup
-
-#### Create a Supabase project
-
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Note your **Project URL** and **anon key** from Settings → API
-3. Also copy your **service_role key** (keep this secret!)
-
-#### Run the SQL migrations
-
-In the Supabase dashboard, go to **SQL Editor** and run these files in order:
-
-```
-supabase/migrations/001_tracks.sql
-supabase/migrations/002_fingerprints.sql
-supabase/migrations/003_match_history.sql
-supabase/migrations/004_profiles.sql
-```
-
-#### Create Storage buckets
-
-In the Supabase dashboard → Storage → New bucket:
-- `songs` — Private
-- `covers` — Public
-- `snippets` — Private
-
-#### Create your first admin user
-
-1. Create an account via the app's signup page (or Supabase Auth dashboard)
-2. In the Supabase SQL editor, run:
-
-```sql
-UPDATE profiles SET role = 'admin' WHERE id = 'YOUR-USER-UUID';
-```
+### 1. Database Configuration
+1. Create a project at [supabase.com](https://supabase.com).
+2. Go to **SQL Editor** and run the migration scripts in the order they appear inside the `supabase/migrations/` directory:
+   * `001_tracks.sql`
+   * `002_fingerprints.sql`
+   * `003_match_history.sql`
+   * `004_profiles.sql`
+3. Under **Storage**, create three buckets:
+   * `songs` (Private)
+   * `covers` (Public)
+   * `snippets` (Private)
+4. Create an admin user: Sign up in the application, then run the SQL below to grant admin privileges:
+   ```sql
+   UPDATE profiles SET role = 'admin' WHERE id = 'YOUR-USER-UUID';
+   ```
 
 ---
 
-### 3. Python Backend Setup
-
-```bash
-cd apps/matcher-api
-
-# Create a virtual environment
-python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate  # macOS/Linux
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy and fill in environment variables
-copy .env.example .env
-```
-
-Edit `apps/matcher-api/.env`:
-```env
-SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-ADMIN_API_KEY=pick-any-strong-secret-string
-ALLOWED_ORIGINS=http://localhost:3000
-```
-
-Start the backend:
-```bash
-uvicorn app.main:app --reload --port 8000
-```
-
-Verify it's running: open [http://localhost:8000/health](http://localhost:8000/health) — you should see `{"status":"ok"}`.
+### 2. Next.js Frontend Setup (`apps/web`)
+1. Navigate to the web folder and install dependencies:
+   ```bash
+   cd apps/web
+   npm install
+   ```
+2. Copy `.env.example` to `.env.local` and enter your credentials:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   NEXT_PUBLIC_MATCHER_API_URL=http://localhost:8000
+   NEXT_PUBLIC_MATCHER_API_KEY=your-admin-api-key
+   MATCHER_API_URL=http://localhost:8000
+   ADMIN_API_KEY=your-admin-api-key
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
 ---
 
-### 4. Next.js Frontend Setup
-
-```bash
-cd apps/web
-
-# Install dependencies
-npm install
-
-# Copy and fill in environment variables
-copy .env.example .env.local
-```
-
-Edit `apps/web/.env.local`:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-NEXT_PUBLIC_MATCHER_API_URL=http://localhost:8000
-NEXT_PUBLIC_MATCHER_API_KEY=your-admin-api-key
-MATCHER_API_URL=http://localhost:8000
-ADMIN_API_KEY=your-admin-api-key
-```
-
-Start the frontend:
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) — you should see the SoundFind home page.
+### 3. Python Backend Setup (`apps/matcher-api`)
+1. Pull the backend code from Hugging Face if cloning for the first time:
+   ```bash
+   cd apps/matcher-api
+   git init
+   git remote add origin https://huggingface.co/spaces/YOUR_HF_USERNAME/YOUR_SPACE_NAME
+   git fetch origin
+   git checkout -b main --track origin/main --force
+   ```
+2. Create and activate a Python virtual environment:
+   ```bash
+   python -m venv venv
+   # Windows:
+   venv\Scripts\activate
+   # macOS/Linux:
+   source venv/bin/activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Copy `.env.example` to `.env` and fill in configuration variables:
+   ```env
+   SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ADMIN_API_KEY=your-admin-api-key
+   ALLOWED_ORIGINS=http://localhost:3000
+   ```
+5. Launch the FastAPI server:
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
 
 ---
 
-## How to Index Sample Songs
+## Production Deployments
 
-### Method 1: Bulk index a local folder (recommended for setup)
-
-Put MP3/WAV/FLAC files in a folder (e.g. `sample_songs/`), then run:
-
+### Backend (Hugging Face Spaces)
+The backend is packaged as a Docker container. Deploy updates by pushing changes to the Hugging Face main branch:
 ```bash
 cd apps/matcher-api
-python scripts/index_local_folder.py ../sample_songs --artist "Various Artists"
+git add .
+git commit -m "feat: updates"
+git push origin main
 ```
+Hugging Face will automatically detect the Dockerfile, build the image, and host it at `https://YOUR_HF_USERNAME-YOUR_SPACE_NAME.hf.space`.
 
-You'll see output like:
-```
-[1/3] Processing: bohemian_rhapsody.mp3
-  Title inferred: 'Bohemian Rhapsody'
-  Track created: id=uuid-xxx
-  Generated 8432 hashes
-  ✓ SUCCESS — 8432 fingerprints stored (duration: 354s)
-```
-
-### Method 2: Upload via the web UI
-
-1. Sign in as an admin user
-2. Go to [http://localhost:3000/admin/upload](http://localhost:3000/admin/upload)
-3. Fill in the title, artist, and choose an audio file
-4. Click **Upload & Index Track**
-
----
-
-## How to Test Recognition
-
-1. Open the app at [http://localhost:3000](http://localhost:3000)
-2. Play an indexed song on another device (or phone speaker)
-3. Click the green microphone button
-4. Hold your device near the speaker — the app records for 7 seconds
-5. After processing (2–5s), the song title and artist appear with a confidence score
-
-**For best results:**
-- Use at least 5 seconds of audio
-- Avoid excessive background noise
-- Hold your device within 1–2 metres of the speaker
-
----
-
-## Deployment
-
-### Backend → Render
-
-1. Push your code to GitHub
-2. Go to [render.com](https://render.com) → **New Web Service**
-3. Connect your GitHub repo, set **Root Directory** to `apps/matcher-api`
-4. Set **Runtime** to **Docker**
-5. Add environment variables:
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `ADMIN_API_KEY`
-   - `ALLOWED_ORIGINS` (your Vercel domain)
-6. Set **Health Check Path** to `/health`
-7. Click **Create Web Service**
-
-### Frontend → Vercel
-
-1. Go to [vercel.com](https://vercel.com) → **Add New Project**
-2. Import your GitHub repo
-3. Set **Root Directory** to `apps/web`
-4. Add environment variables (from `.env.local`)
-5. Click **Deploy**
-
-> ⚠️ **Important:** After deploying, add your Vercel domain to:
-> - Supabase → Authentication → URL Configuration → Allowed redirect URLs
-> - `ALLOWED_ORIGINS` in your Render environment variables
-
----
-
-## Environment Variables Reference
-
-### `apps/web/.env.local`
-
-| Variable | Description | Public? |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | ✅ Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase public anon key | ✅ Yes |
-| `NEXT_PUBLIC_MATCHER_API_URL` | Python backend URL | ✅ Yes |
-| `NEXT_PUBLIC_MATCHER_API_KEY` | Shared API key for /recognize | ✅ Yes |
-| `MATCHER_API_URL` | Python backend URL (server-side) | ❌ No |
-| `ADMIN_API_KEY` | Secret API key (server-side only) | ❌ No |
-
-### `apps/matcher-api/.env`
-
-| Variable | Description |
-|----------|-------------|
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (bypasses RLS) |
-| `ADMIN_API_KEY` | Must match Next.js `ADMIN_API_KEY` |
-| `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins |
-
----
-
-## Known Limitations
-
-- **No Supabase Storage upload in MVP** — audio files are fingerprinted from the upload buffer but not stored in Supabase Storage yet. The `audio_url` field stores a placeholder path. Add storage upload to `main.py` for production.
-- **Cold starts on Render free tier** — the first request after inactivity takes ~30 seconds. Upgrade to a paid tier or implement a keep-alive ping.
-- **Safari on iOS** — `MediaRecorder` uses MP4/AAC instead of WebM. ffmpeg in the backend handles this, but ensure ffmpeg is installed in your Docker image.
-- **Large catalogues** — performance degrades with millions of fingerprints. Add Postgres partitioning or a dedicated fingerprint search index (e.g. Redis bloom filter) for scale.
-- **Anonymous history** — match results for logged-out users are not saved to the database.
-
----
-
-## Future Improvements
-
-- [ ] Supabase Storage integration for audio files and cover art
-- [ ] Admin dashboard with catalogue management (edit/delete tracks)
-- [ ] Supabase Realtime for live history updates on the dashboard
-- [ ] Google OAuth login
-- [ ] PWA support (offline landing page, install prompt)
-- [ ] waveform visualization during recording using the Web Audio API
-- [ ] Rate limiting on the recognition endpoint
-- [ ] Batch fingerprint re-indexing for catalogue updates
-- [ ] MusicBrainz metadata enrichment (auto-fill artist/album)
-
----
-
-## How the Fingerprinting Works
-
-The algorithm is inspired by the [Wang 2003 "Industrial-Strength Audio Search" paper](https://www.ee.columbia.edu/~dpwe/papers/Wang03-shazam.pdf):
-
-1. **STFT spectrogram** — the audio is transformed into a 2D frequency × time map
-2. **Peak detection** — local maxima (constellation map) are found across the spectrogram
-3. **Landmark hashing** — each peak is paired with nearby peaks; each pair is hashed: `SHA-1(f_anchor | f_target | Δt)[:10]`
-4. **Offset alignment voting** — during recognition, query hashes are looked up in the DB; matches are grouped by `(track_id, db_offset − query_offset)`; the bucket with the most votes wins
-5. **Confidence score** — `votes / total_query_hashes` gives a 0–1 confidence rating
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE) for details.
+### Frontend (Vercel)
+Import the main GitHub repository into Vercel and configure the root directory to `apps/web`. Add the environment variables defined in `.env.local` to Vercel's project dashboard.
