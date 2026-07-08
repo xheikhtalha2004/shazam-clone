@@ -102,7 +102,7 @@ CREATE TABLE profiles (
 1. **Downsampling**: Audio is resampled to $11,025\text{ Hz}$ mono to retain low/mid-frequency fidelity while keeping processing light.
 2. **Spectrogram**: Short-Time Fourier Transform (STFT) uses `n_fft=4096` and `hop_length=512`.
 3. **Log Scale**: Power values are mapped to decibels.
-4. **Constellation Map**: Local maxima are selected using a sliding filter (`scipy.ndimage.maximum_filter`) with neighborhood windowing size `20`.
+4. **Asymmetric Constellation Map**: Local maxima are selected using a 2D filter (`scipy.ndimage.maximum_filter`) with an asymmetric neighborhood window size of `(50, 10)` (50 bins along the frequency axis, 10 frames along the time axis). This controls peak density by preventing redundant harmonic clusters in the frequency domain while capturing transients densely in the time domain.
 5. **Combinatorial Hash Pairing**: Each peak (anchor) is matched against up to `15` subsequent peaks (targets) inside a localized target zone ($0 \le \Delta t \le 200$ frames).
 6. **Hashing**: Formats: `hash = SHA-1(f_anchor | f_target | delta_t)[:10]`.
 
@@ -111,9 +111,9 @@ CREATE TABLE profiles (
 2. **Offset Alignment (Wang 2003)**:
    For every matching hash in the database, calculate the offset differential:
    $$\Delta \text{offset} = \text{offset\_time}_{\text{database}} - \text{offset\_time}_{\text{query}}$$
-3. **Voting**: Group results by `(track_id, delta_offset)`.
-4. **Winner Selection**: The track and offset bin with the highest vote count is declared the winner if:
-   * $\text{Confidence} \ge 0.05$ (where $\text{Confidence} = \text{Winning Votes} / \text{Total Query Hashes}$)
+3. **Neighborhood Voting / Smoothing**: Group results by `track_id` and calculate the votes utilizing a running window with a radius of $1$ frame ($\pm 1$ frame, representing $\approx \pm 46.4\text{ms}$). This aggregates matching peaks that are slightly shifted due to phase differences, microphone echo, and minor playback speed variation, preventing quantization noise from splitting votes.
+4. **Winner Selection**: The track and offset bin with the highest neighborhood-smoothed vote count is declared the winner if:
+   * $\text{Confidence} \ge 0.05$ (where $\text{Confidence} = \text{Aggregated Votes} / \text{Total Query Hashes}$)
    * $\text{Absolute Votes} \ge 5$
 
 ---
@@ -128,10 +128,23 @@ CREATE TABLE profiles (
 * **Problem**: In `matcher.py`, looking up all query hashes at once via `.in_("hash", hashes)` caused `httpx` to crash with `httpx.InvalidURL: URL component 'query' too long` when processing recordings longer than 5 seconds (generating thousands of hashes).
 * **Fix**: Implemented hash deduplication and chunked SQL lookup batching (size `100` hashes per call) in `supabase_client.py` inside the Python backend to keep URLs compact.
 
+### Monorepo Build Configuration (Vercel)
+* **Problem**: Vercel deployment failed initially with `No such file or directory` when attempting to build the Next.js app because the monorepo root structure wasn't configured correctly in Vercel's build settings.
+* **Fix**: Updated `vercel.json` to define the root directory build context correctly, ensuring monorepo dependencies compile cleanly.
+
+### JSX Syntax Errors in Navbar React Component
+* **Problem**: The mobile navigation hamburger menu was throwing JSX syntax compilation errors in Next.js builds due to orphaned nesting tags (`</div>`, `</nav>`) left behind during string replacement edits.
+* **Fix**: Conducted a clean rewrite of `Navbar.tsx` to restore correct JSX nesting hierarchy and verified compiler compatibility via local `tsc --noEmit`.
+
+### Subprocess / Library Decoders (ffmpeg)
+* **Problem**: Librosa failed to parse `.webm` audio tracks recorded from browser media devices in environments missing platform-level multimedia codecs.
+* **Fix**: Explicitly added `ffmpeg` and `libsndfile1` to the Hugging Face Docker image base layers in the Dockerfile.
+
 ---
 
 ## 5. Deployment Setup
 
 * **Frontend**: Next.js app on Vercel. Root directory pointing to `apps/web`.
-* **Backend**: Docker space on Hugging Face. Local folder is `apps/matcher-api/`. Run `git push` inside the `matcher-api` folder to update the Hugging Face space.
+* **Backend**: Docker space on Hugging Face. Local folder is `apps/matcher-api/`. Run `git push` inside the `apps/matcher-api/` folder to update the Hugging Face space.
 * **Database & Storage**: Managed on Supabase. Storage buckets `songs` and `snippets` must be present.
+
