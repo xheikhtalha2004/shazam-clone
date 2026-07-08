@@ -205,29 +205,51 @@ async def get_fingerprints_by_hashes(hashes: list[str]) -> list[dict]:
     Parameters
     ----------
     hashes:
-        List of hash strings (up to ~500 at a time recommended).
+        List of hash strings (potentially thousands for a multi-second clip).
 
     Returns
     -------
     list[dict] — rows with keys: hash, track_id, offset_time
+
+    Notes
+    -----
+    Queries in chunks of CHUNK_SIZE to avoid httpx.InvalidURL: URL component
+    'query' too long. The Supabase SDK encodes .in_() values as a GET query
+    string — sending thousands of hashes at once exceeds the URL length limit.
     """
     if not hashes:
         return []
 
-    # Supabase Python SDK uses .in_() for SQL IN clause
-    # We only need hash, track_id, offset_time — not the PK
-    try:
-        response = (
-            get_supabase()
-            .table("audio_fingerprints")
-            .select("hash, track_id, offset_time")
-            .in_("hash", hashes)
-            .execute()
-        )
-        return response.data or []
-    except Exception as exc:
-        logger.error("Failed to query fingerprints by hashes: %s", exc)
-        raise
+    # Deduplicate: the DB match set is the same whether we send duplicates or not,
+    # and deduplication drastically reduces the number of chunks needed.
+    unique_hashes = list(set(hashes))
+
+    CHUNK_SIZE = 100  # keeps each URL well under httpx's limit
+    all_results: list[dict] = []
+
+    for i in range(0, len(unique_hashes), CHUNK_SIZE):
+        chunk = unique_hashes[i : i + CHUNK_SIZE]
+        try:
+            response = (
+                get_supabase()
+                .table("audio_fingerprints")
+                .select("hash, track_id, offset_time")
+                .in_("hash", chunk)
+                .execute()
+            )
+            all_results.extend(response.data or [])
+        except Exception as exc:
+            logger.error(
+                "Failed to query fingerprints for hash chunk [%d:%d]: %s",
+                i, i + CHUNK_SIZE, exc,
+            )
+            raise
+
+    logger.debug(
+        "Hash lookup: %d unique hashes → %d DB rows (in %d chunks)",
+        len(unique_hashes), len(all_results), (len(unique_hashes) + CHUNK_SIZE - 1) // CHUNK_SIZE,
+    )
+    return all_results
 
 
 def delete_fingerprints_for_track(track_id: str) -> None:
