@@ -55,3 +55,8 @@ skills-lock.json
 *.ogg
 *.aac
 sample_songs/
+
+# ── Server (matcher-api) — tracked separately in Hugging Face Spaces repo ──────
+# Do NOT add apps/matcher-api/ back to GitHub.
+# Manage it via: cd apps/matcher-api && git push
+apps/matcher-api/
