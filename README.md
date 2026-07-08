@@ -14,10 +14,10 @@ For an in-depth blueprint of the databases, mathematical hashing logic (spectrog
 This project uses a split-repository structure to host the Next.js frontend and Python backend independently:
 
 1. **GitHub Monorepo Root (`/`)**: Hosts the Next.js Web App (`apps/web`). The backend directory is ignored (`.gitignore`). Deploy target is Vercel.
-2. **Hugging Face Space Repository (`apps/matcher-api/`)**: A nested Git repository hosting the Python FastAPI Matcher Service. Deploy target is Hugging Face Spaces (running via Docker).
+2. **Hugging Face Space Repository (`apps/matcher-api/`)**: A nested Git repository hosting the Python FastAPI Matcher Service. Deploys directly to [Hugging Face Space: xheikhtalha2004/shazam-clone](https://huggingface.co/spaces/xheikhtalha2004/shazam-clone).
 
 > [!IMPORTANT]
-> The server files in `apps/matcher-api/` are tracked in a separate Hugging Face Spaces git repository. To make server updates or deploy the API, navigate inside the subdirectory to push your changes:
+> The server files in `apps/matcher-api/` are tracked in a separate Hugging Face Spaces repository. To update or deploy the API, commit and push from inside the sub-repository folder:
 > ```bash
 > cd apps/matcher-api
 > git status
@@ -119,7 +119,7 @@ This project uses a split-repository structure to host the Next.js frontend and 
    ```bash
    cd apps/matcher-api
    git init
-   git remote add origin https://huggingface.co/spaces/YOUR_HF_USERNAME/YOUR_SPACE_NAME
+   git remote add origin https://huggingface.co/spaces/xheikhtalha2004/shazam-clone
    git fetch origin
    git checkout -b main --track origin/main --force
    ```
